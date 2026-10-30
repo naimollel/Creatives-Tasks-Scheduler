@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Creative Scheduler &amp; Reminder</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;600;800&display=swap">
+<style>
+:root{--bg:#e9efee;--card:#fff;--ink:#12263a;--mute:#5d6f7e;--line:#d3dedb;--acc:#0f766e;--accbg:#d5efeb;--warn:#a85d00;--warnbg:#ffe9c4;--bad:#b3261e;--badbg:#fbdcd9;--wa:#1faa52;color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0e1a22;--card:#16252f;--ink:#e6eef2;--mute:#93a7b4;--line:#27394536;--line:#294049;--acc:#4fd1c0;--accbg:#12433f;--warn:#ffc266;--warnbg:#4a3512;--bad:#ff8f87;--badbg:#4d1f1c;--wa:#37d36f;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#0e1a22;--card:#16252f;--ink:#e6eef2;--mute:#93a7b4;--line:#294049;--acc:#4fd1c0;--accbg:#12433f;--warn:#ffc266;--warnbg:#4a3512;--bad:#ff8f87;--badbg:#4d1f1c;--wa:#37d36f;color-scheme:dark}
+*{box-sizing:border-box}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 "Bricolage Grotesque",system-ui,-apple-system,"Segoe UI",sans-serif}
+.wrap{max-width:1180px;margin:0 auto;padding:18px 14px 60px}
+h1{font-size:clamp(24px,4vw,34px);font-weight:800;margin:0 0 4px;letter-spacing:-.02em}
+.sub{color:var(--mute);margin:0 0 14px}
+.add{display:flex;gap:8px;flex-wrap:wrap}
+.add input{flex:1 1 280px}
+input,select,button{font:inherit;color:inherit}
+input,select{background:var(--card);border:1.5px solid var(--line);border-radius:10px;padding:11px 12px;min-width:0}
+input:focus,select:focus,button:focus-visible,a:focus-visible{outline:2.5px solid var(--acc);outline-offset:1px}
+button{cursor:pointer;border:0;border-radius:10px;padding:11px 16px;font-weight:600;background:var(--acc);color:#fff}
+:root[data-theme="dark"] button.pri,:root:not([data-theme="light"]) button.pri{color:#06201d}
+button.ghost{background:transparent;color:var(--ink);border:1.5px solid var(--line)}
+#hint{min-height:22px;margin:8px 2px 14px;color:var(--acc);font-weight:600}
+.stats{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:6px 12px;color:var(--mute)}
+.stat b{color:var(--ink);font-size:17px;margin-right:4px}
+.stat.bad b{color:var(--bad)}
+.grid{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(300px,1fr);gap:16px;align-items:start}
+@media(max-width:880px){.grid{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px}
+.nav{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.nav h2{flex:1;margin:0;font-size:24px;font-weight:800;letter-spacing:-.01em}
+.dow,.days{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
+.dow span{text-align:center;color:var(--mute);font-weight:600;padding:4px 0}
+.cell{min-height:92px;border:1px solid var(--line);border-radius:8px;padding:4px;cursor:pointer;overflow:hidden;display:flex;flex-direction:column;gap:2px}
+.cell:hover{border-color:var(--acc)}
+.cell.oth{opacity:.45}
+.cell.today{background:var(--accbg)}
+.cell.sel{outline:2.5px solid var(--acc)}
+.cell b{font-size:13px}
+.cell.today b{background:var(--acc);color:#fff;border-radius:99px;padding:0 6px;align-self:flex-start}
+.cell small{color:var(--mute);font-size:11px}
+.chip{font-size:11.5px;line-height:1.25;padding:2px 5px;border-radius:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:var(--accbg);color:var(--acc);font-weight:600}
+.chip.soon{background:var(--warnbg);color:var(--warn)}
+.chip.late{background:var(--badbg);color:var(--bad)}
+.chip.done{background:transparent;color:var(--mute);text-decoration:line-through;font-weight:400}
+@media(max-width:560px){.cell{min-height:64px;padding:2px}.chip{font-size:10px;padding:1px 3px}}
+aside h3{margin:0 0 8px;font-size:18px;font-weight:800;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.task{display:grid;grid-template-columns:auto 1fr;gap:4px 10px;padding:10px 0;border-top:1px solid var(--line)}
+.task:first-of-type{border-top:0}
+.task.done .tt{text-decoration:line-through;color:var(--mute)}
+.tt{font-weight:600;overflow-wrap:anywhere}
+.meta{grid-column:2;display:flex;flex-wrap:wrap;gap:6px;align-items:center;color:var(--mute);font-size:13px}
+.badge{border-radius:99px;padding:1px 9px;font-size:12px;font-weight:600;background:var(--accbg);color:var(--acc)}
+.badge.soon{background:var(--warnbg);color:var(--warn)}
+.badge.late{background:var(--badbg);color:var(--bad)}
+.acts{grid-column:2;display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.acts select{padding:6px 8px;font-size:13px;max-width:150px}
+a.wa,button.wa{background:var(--wa);color:#fff;text-decoration:none;border-radius:8px;padding:7px 11px;font-weight:600;font-size:13px;border:0}
+button.sm{padding:6px 10px;font-size:13px}
+.empty{color:var(--mute);padding:8px 0}
+.pform{display:grid;grid-template-columns:1fr 1fr auto;gap:6px;margin-bottom:8px}
+@media(max-width:440px){.pform{grid-template-columns:1fr}}
+.person{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 0;border-top:1px solid var(--line)}
+.person span{color:var(--mute);font-size:13px}
+.note{color:var(--mute);font-size:12.5px;margin:6px 0 0}
+.imp{margin-bottom:16px}.imp summary{cursor:pointer;font-weight:800;font-size:17px}
+.imp textarea{width:100%;margin:10px 0;background:var(--card);color:var(--ink);border:1.5px solid var(--line);border-radius:10px;padding:10px;font:inherit;resize:vertical}
+textarea:focus{outline:2.5px solid var(--acc);outline-offset:1px}
+.imp .row{display:flex;gap:8px}
+.pv{display:flex;gap:10px;align-items:flex-start;padding:6px 0;border-top:1px solid var(--line)}
+.pv .badge{white-space:nowrap}.pv-h{margin:12px 0 4px}
+:root{--wa:#0f8a43;--chat:#efe7dd;--bub:#d9fdd3;--bubink:#111b21}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--chat:#0b141a;--bub:#005c4b;--bubink:#e9edef}:root:not([data-theme="light"]) .wa{color:#04210f}}
+:root[data-theme="dark"]{--chat:#0b141a;--bub:#005c4b;--bubink:#e9edef}:root[data-theme="dark"] .wa{color:#04210f}
+.top{display:flex;align-items:center;gap:12px;margin-bottom:6px}
+.logo{width:48px;height:48px;border-radius:14px;background:var(--acc);display:grid;place-items:center;font-size:24px;flex:none}
+.top h1{margin:0}.top .sub{margin:0}
+.today-chip{margin-left:auto;background:var(--card);border:1px solid var(--line);border-radius:99px;padding:6px 14px;font-weight:600;white-space:nowrap}
+@media(max-width:560px){.today-chip{display:none}}
+.add{background:var(--card);border:1.5px solid var(--line);border-radius:16px;padding:8px;box-shadow:0 8px 28px -14px rgba(18,38,58,.45)}
+.add:focus-within{outline:2.5px solid var(--acc)}
+.add input{border:0;background:transparent;font-size:16px}.add input:focus{outline:0}
+.add button{border-radius:12px}
+#hint:not(:empty){background:var(--accbg);padding:9px 13px;border-radius:10px}
+.stat{flex:1;min-width:104px;text-align:center;border-radius:14px}
+.stat b{display:block;font-size:28px;line-height:1.1;margin:0}
+.card{border-radius:18px}
+.cell{border-radius:10px;border-color:transparent;background:color-mix(in srgb,var(--bg) 55%,var(--card))}
+.cell:hover{background:var(--accbg);border-color:transparent}
+.cell.today{background:var(--card);border:2px solid var(--acc)}
+.cell b{font-weight:800}
+.chip{border-left:3px solid currentColor;border-radius:4px}
+.task{border:1px solid var(--line);border-left:4px solid var(--acc);border-radius:12px;padding:10px 12px;margin-bottom:8px}
+.task:first-of-type{border-top:1px solid var(--line)}
+.task.soon{border-left-color:var(--warn)}.task.late{border-left-color:var(--bad)}.task.done{opacity:.6;border-left-color:var(--mute)}
+.wa{border-radius:99px!important;padding:7px 14px!important;cursor:pointer}
+.av{width:34px;height:34px;border-radius:50%;background:var(--accbg);color:var(--acc);display:grid;place-items:center;font-style:normal;font-weight:800;flex:none}
+.person{justify-content:flex-start}
+.ov{position:fixed;inset:0;background:rgba(8,20,30,.55);display:grid;place-items:center;padding:16px;z-index:30;backdrop-filter:blur(3px)}
+.ov[hidden]{display:none}
+.dlg{background:var(--card);border-radius:20px;width:min(460px,100%);max-height:92vh;overflow:auto;padding:16px}
+.dlg h3{margin:0 0 10px;font-size:19px}
+.chat{background:var(--chat);border-radius:14px;padding:14px 12px;margin-bottom:12px}
+.bubble{background:var(--bub);color:var(--bubink);border-radius:14px 14px 4px 14px;margin-left:auto;max-width:94%;padding:9px 12px;line-height:1.45;font-size:14.5px;box-shadow:0 1px 1px rgba(0,0,0,.18);overflow-wrap:anywhere}
+.bubble small{display:block;text-align:right;color:#667781;font-size:11px;margin-top:3px}
+.dlg summary{cursor:pointer;font-weight:600;color:var(--mute)}
+.dlg textarea{width:100%;margin-top:8px;background:var(--card);color:var(--ink);border:1.5px solid var(--line);border-radius:10px;padding:10px;font:inherit}
+.dlg .row{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+a.big{flex:1;text-align:center;font-size:15px;padding:12px 16px!important}
+#toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;opacity:0;pointer-events:none;transition:opacity .2s;max-width:90vw;z-index:20}
+#toast.on{opacity:1}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top"><div class="logo" aria-hidden="true">📅</div><div><h1>Creative Scheduler &amp; Reminder</h1></div><div class="today-chip" id="todayChip"></div></header>
+  <p class="sub">Type a task in plain words. It lands on the right day, or on the lightest day of the coming month.</p>
+  <div class="add">
+    <input id="q" autocomplete="off" aria-label="New task" placeholder="e.g. Send invoice to Amina by Friday, or just: Prepare stock report">
+    <button id="addBtn" class="pri">Add task</button>
+  </div>
+  <div id="hint" aria-live="polite"></div>
+  <div class="stats" id="stats"></div>
+
+  <details class="card imp" id="imp">
+    <summary>Paste a full plan (projects, steps and dates)</summary>
+    <textarea id="plan" rows="9" aria-label="Plan text" placeholder="ASHTON:&#10;1. Project name&#10;- First concept - 15th Nov&#10;- Revisions - 20-24th Nov&#10;- Submission - 27th Nov"></textarea>
+    <div class="row"><button id="readBtn">Read plan</button><button id="clearPlan" class="ghost">Clear</button></div>
+    <div id="preview"></div>
+  </details>
+
+  <div class="grid">
+    <section class="card">
+      <div class="nav">
+        <button class="ghost sm" id="prev" aria-label="Previous month">‹</button>
+        <h2 id="mTitle"></h2>
+        <button class="ghost sm" id="todayBtn">Today</button>
+        <button class="ghost sm" id="next" aria-label="Next month">›</button>
+      </div>
+      <div class="dow"><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span></div>
+      <div class="days" id="days"></div>
+    </section>
+
+    <aside>
+      <div class="card" style="margin-bottom:16px">
+        <h3><span id="listTitle">Pending tasks</span><button class="ghost sm" id="showAll" hidden>Show all</button></h3>
+        <div id="list"></div>
+      </div>
+      <div class="card">
+        <h3>People to remind</h3>
+        <input id="me" placeholder="Your name (signs your messages)" aria-label="Your name" style="width:100%;margin-bottom:10px">
+        <div class="pform">
+          <input id="pn" placeholder="Name" aria-label="Name">
+          <input id="pp" placeholder="WhatsApp number" inputmode="tel" aria-label="WhatsApp number">
+          <button id="pAdd">Save</button>
+        </div>
+        <p class="note">Use the country code (255712345678). A leading 0 is read as Tanzania (+255). Mention a saved name in a task and it is assigned automatically.</p>
+        <div id="people"></div>
+      </div>
+    </aside>
+  </div>
+</div>
+<div class="ov" id="ov" hidden>
+  <div class="dlg" role="dialog" aria-modal="true" aria-label="Message preview">
+    <h3>Reminder for <span id="ovName"></span></h3>
+    <div class="chat"><div class="bubble" id="bubble"></div></div>
+    <details><summary>Edit message</summary><textarea id="msgTxt" rows="9" aria-label="Message text"></textarea></details>
+    <div class="row"><a id="sendWa" class="wa big" target="_blank" rel="noopener" href="#">Send on WhatsApp</a><button class="ghost" id="copyMsg">Copy</button><button class="ghost" id="closeOv">Close</button></div>
+  </div>
+</div>
+<div id="toast" role="status"></div>
+
+<script>
+const $=s=>document.querySelector(s);
+const MON='jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|june?|july?|aug(?:ust)?|sep(?:t|tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?';
+const MN=['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
+const WD=['sun','mon','tue','wed','thu','fri','sat'];
+const pad=n=>String(n).padStart(2,'0');
+const iso=d=>d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+const fromIso=s=>{const [y,m,d]=s.split('-').map(Number);return new Date(y,m-1,d)};
+const addDays=(d,n)=>{const x=new Date(d);x.setDate(x.getDate()+n);return x};
+const TODAY=(()=>{const n=new Date();return new Date(n.getFullYear(),n.getMonth(),n.getDate())})();
+const fmt=(d,long)=>d.toLocaleDateString('en-GB',long?{weekday:'long',day:'numeric',month:'long'}:{weekday:'short',day:'numeric',month:'short'});
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+let S={tasks:[],people:[]};
+try{const r=JSON.parse(localStorage.getItem('scheduler.v1'));if(r)S=r}catch(e){}
+S.tasks=S.tasks||[];S.people=S.people||[];
+const save=()=>{try{localStorage.setItem('scheduler.v1',JSON.stringify(S))}catch(e){}};
+let view=new Date(TODAY.getFullYear(),TODAY.getMonth(),1),sel=null;
+
+const left=t=>Math.round((fromIso(t.due)-TODAY)/864e5);
+const st=t=>t.done?'done':left(t)<0?'late':left(t)<=2?'soon':'';
+const person=id=>S.people.find(p=>p.id===id);
+function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(toast.t);toast.t=setTimeout(()=>t.classList.remove('on'),2600)}
+
+/* ---- natural-language date parsing ---- */
+function mk(mo,day){let d=new Date(TODAY.getFullYear(),mo,day);if(d<TODAY)d=new Date(TODAY.getFullYear()+1,mo,day);return d}
+const md=(n,day)=>mk(MN.indexOf(n.slice(0,3).toLowerCase()),+day);
+const RANGE=new RegExp('\\b(\\d{1,2})(?:st|nd|rd|th)?\\s*[-–—]\\s*(\\d{1,2})(?:st|nd|rd|th)?\\s+(?:of\\s+)?('+MON+')\\b','i');
+const RULES=[
+ [RANGE,m=>md(m[3],m[2])],
+ [/\btoday\b/i,()=>TODAY],
+ [/\btomorrow\b/i,()=>addDays(TODAY,1)],
+ [/\bin (\d+) (day|week|month)s?\b/i,m=>m[2].toLowerCase()==='day'?addDays(TODAY,+m[1]):m[2].toLowerCase()==='week'?addDays(TODAY,7*m[1]):new Date(TODAY.getFullYear(),TODAY.getMonth()+ +m[1],TODAY.getDate())],
+ [/\bnext week\b/i,()=>addDays(TODAY,7)],
+ [/\bend of (?:the )?month\b/i,()=>new Date(TODAY.getFullYear(),TODAY.getMonth()+1,0)],
+ [new RegExp('\\b(\\d{1,2})(?:st|nd|rd|th)?\\s+(?:of\\s+)?('+MON+')\\b','i'),m=>md(m[2],m[1])],
+ [new RegExp('\\b('+MON+')\\.?\\s+(\\d{1,2})(?:st|nd|rd|th)?\\b','i'),m=>md(m[1],m[2])],
+ [/\b(\d{1,2})\/(\d{1,2})\b/,m=>mk(+m[2]-1,+m[1])],
+ [/\b(?:next\s+)?(sun(?:day)?|mon(?:day)?|tue(?:s|sday)?|wed(?:nesday)?|thu(?:r|rs|rsday)?|fri(?:day)?|sat(?:urday)?)\b/i,m=>{const w=WD.indexOf(m[1].slice(0,3).toLowerCase());let n=(w-TODAY.getDay()+7)%7;return addDays(TODAY,n||7)}]
+];
+function parse(text){
+  for(const [re,fn] of RULES){const m=text.match(re);if(m){
+    const title=text.replace(m[0],' ').replace(/\s+/g,' ').replace(/\b(by|on|before|due|until|for|at)\s*$/i,'').replace(/^(by|on)\s+/i,'').trim();
+    return {date:fn(m),title:title||text.trim()};
+  }}
+  return {date:null,title:text.trim()};
+}
+function findDate(text){for(const [re,fn] of RULES){const m=text.match(re);if(m)return {m,date:fn(m),range:re===RANGE}}return null}
+function allocate(){
+  let best=null,bs=1e9;
+  for(let i=1;i<=30;i++){const d=addDays(TODAY,i),k=iso(d);
+    const load=S.tasks.filter(t=>!t.done&&t.due===k).length;
+    const sc=load*10+(d.getDay()%6===0?4:0)+i*.3;
+    if(sc<bs){bs=sc;best=d}}
+  return best;
+}
+function addTask(){
+  const raw=$('#q').value.trim();if(!raw)return;
+  let {date,title}=parse(raw),auto=false;
+  if(!date){date=/\b(urgent|asap)\b/i.test(raw)?addDays(TODAY,1):allocate();auto=true}
+  const who=S.people.find(p=>new RegExp('\\b'+p.name.split(' ')[0].replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'\\b','i').test(raw));
+  S.tasks.push({id:Date.now().toString(36)+Math.random().toString(36).slice(2,5),title,due:iso(date),who:who?who.id:'',done:false});
+  save();$('#q').value='';
+  view=new Date(date.getFullYear(),date.getMonth(),1);
+  $('#hint').textContent=(auto?'No date found, so I scheduled it for the lightest day: ':'Scheduled for ')+fmt(date,true)+(who?' · assigned to '+who.name:'')+'.';
+  render();
+}
+
+/* ---- plan import ---- */
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+const clean=s=>s.replace(/[\u2060\u200b\u200c\u200d\ufeff]/g,'').replace(/\u00a0/g,' ');
+const titleCase=s=>s===s.toUpperCase()?s.toLowerCase().replace(/(^|[\s(\-])([a-z])/g,(a,b,c)=>b+c.toUpperCase()):s;
+function findPerson(n){const f=String(n).split(' ')[0].toLowerCase();return S.people.find(p=>p.name.split(' ')[0].toLowerCase()===f)}
+let PLAN=null;
+function readPlan(text){
+  const out={who:'',tasks:[],skipped:[]};let proj='';
+  for(const raw of text.split(/\r?\n/)){
+    const line=clean(raw).trim();if(!line)continue;
+    const bullet=/^[-–—•*]\s*/.test(line),body=line.replace(/^[-–—•*]\s*/,'').trim();
+    if(!bullet&&/^\d+[.)]?\s+\S/.test(line)){proj=titleCase(line.replace(/^\d+[.)]?\s*/,'').trim());continue}
+    if(!bullet&&/^[^:]{1,30}:$/.test(line)){out.who=line.slice(0,-1).trim();continue}
+    const f=findDate(body);
+    if(!f){out.skipped.push((proj?proj+': ':'')+body.replace(/[.\s]+$/,''));continue}
+    const m=f.m,pre=body.slice(0,m.index),post=body.slice(m.index+m[0].length);
+    let step=pre.split(/\s+[-–—]\s+|\s*[—–]\s*/)[0].replace(/\s*\b(by|before|on|at|until|from|latest)\s*$/i,'').trim();
+    let note=post.replace(/^[\s\-–—:,.]+/,'').replace(/^(maximum|max|at the latest|latest)\b[\s\-–—:,.]*/i,'').trim();
+    const air=/\b(air|aired|airing)\b/i.test(pre);
+    if(air)step='Airing starts';
+    if(!step)step='Deadline';
+    step=step.charAt(0).toUpperCase()+step.slice(1);
+    if(f.range){const mon=m[3].charAt(0).toUpperCase()+m[3].slice(1,3).toLowerCase();note=('Window '+(+m[1])+'–'+(+m[2])+' '+mon+(note?'. '+note:''))}
+    out.tasks.push({title:proj?step+' — '+proj:step,due:iso(f.date),note});
+  }
+  return out;
+}
+function showPreview(){
+  const box=$('#preview');if(!PLAN){box.innerHTML='';return}
+  const {who,tasks,skipped}=PLAN;
+  if(!tasks.length){box.innerHTML='<p class="note">I couldn’t find any dated steps. Put a date on each line, like “First concept - 15th Nov”.</p>';return}
+  const q=who&&findPerson(who);
+  const sorted=[...tasks].sort((a,b)=>a.due.localeCompare(b.due));
+  box.innerHTML=`<p class="pv-h">${who?`Assigned to <b>${esc(who)}</b>${q?(q.phone?'':' (add their number under People)'):' (new person, add their number under People)'}`:'No name found, so tasks will be unassigned'}</p>`
+    +sorted.map(t=>`<div class="pv"><span class="badge">${fmt(fromIso(t.due))}</span><div><b>${esc(t.title)}</b>${t.note?`<div class="note" style="margin:0">${esc(t.note)}</div>`:''}</div></div>`).join('')
+    +(skipped.length?`<p class="note">Skipped (no date): ${skipped.map(esc).join('; ')}</p>`:'')
+    +`<button id="confirmPlan" class="pri" style="margin-top:10px">Add ${tasks.length} tasks to the calendar</button>`;
+}
+function confirmPlan(){
+  let who=null;
+  if(PLAN.who){who=findPerson(PLAN.who);if(!who){who={id:uid(),name:titleCase(PLAN.who),phone:''};S.people.push(who)}}
+  let n=0;
+  PLAN.tasks.forEach(t=>{if(S.tasks.some(x=>x.title===t.title&&x.due===t.due))return;S.tasks.push({id:uid(),title:t.title,due:t.due,note:t.note,who:who?who.id:'',done:false});n++});
+  save();
+  const first=PLAN.tasks.map(t=>t.due).sort()[0];
+  if(first){const d=fromIso(first);view=new Date(d.getFullYear(),d.getMonth(),1)}
+  PLAN=null;$('#plan').value='';$('#imp').open=false;showPreview();render();
+  $('#hint').textContent='Added '+n+' tasks to the calendar'+(who?' for '+who.name:'')+(who&&!who.phone?'. Add '+who.name+'’s WhatsApp number under People to turn on reminders.':'.');
+}
+
+/* ---- WhatsApp ---- */
+const phone=n=>{let d=String(n).replace(/\D/g,'');if(d.startsWith('0'))d='255'+d.slice(1);return d};
+function message(t,p){
+  const n=left(t),due=fmt(fromIso(t.due),true);
+  const body=n>0?`you have ${n} day${n===1?'':'s'} left to complete “${t.title}” (due ${due}).`
+    :n===0?`“${t.title}” is due today (${due}).`
+    :`“${t.title}” was due ${-n} day${n===-1?'':'s'} ago (${due}). Please update me on it.`;
+  return nice(t,p,n);
+}
+const waLink=(t,p)=>'https://wa.me/'+phone(p.phone)+'?text='+encodeURIComponent(message(t,p));
+
+function nice(t,p,n){
+  const dl=fmt(fromIso(t.due),true),me=(S.me||'').trim();
+  const icon=n<0?'🔴':n<=2?'🟠':'🟢';
+  const status=n>0?`*${n} day${n===1?'':'s'} left*`:n===0?'*Due today*':`*Overdue by ${-n} day${n===-1?'':'s'}*`;
+  const [step,proj]=t.title.split(' — ');
+  const ask=n<0?'Please send me an update as soon as you can.':n<=2?'Please prioritise this one so we land it on time.':'Please plan your time so we land it on time.';
+  return [`Hello ${p.name} 👋`,'',`${icon} *Task reminder*`,'',`*${step}*`+(proj?`\n_${proj}_`:''),'',`📅 Due: ${dl}`,`⏳ Status: ${status}`,t.note?`📝 Note: ${t.note}`:null,'',ask+' 🙏',me?`\n— ${me}`:null].filter(x=>x!==null).join('\n');
+}
+let CUR=null;
+function openMsg(t,p){CUR={t,p};$('#ovName').textContent=p.name;$('#msgTxt').value=message(t,p);syncMsg();$('#ov').hidden=false;$('#sendWa').focus()}
+function syncMsg(){
+  const v=$('#msgTxt').value;
+  $('#bubble').innerHTML=esc(v).replace(/\*([^*\n]+)\*/g,'<b>$1</b>').replace(/_([^_\n]+)_/g,'<i>$1</i>').replace(/\n/g,'<br>')+'<small>'+new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})+' ✓✓</small>';
+  $('#sendWa').href='https://wa.me/'+phone(CUR.p.phone)+'?text='+encodeURIComponent(v);
+}
+
+/* ---- render ---- */
+function render(){
+  const y=view.getFullYear(),m=view.getMonth();
+  $('#mTitle').textContent=view.toLocaleDateString('en-GB',{month:'long',year:'numeric'});
+  const first=new Date(y,m,1),off=(first.getDay()+6)%7,dim=new Date(y,m+1,0).getDate(),rows=Math.ceil((off+dim)/7);
+  const start=addDays(first,-off),by={};
+  S.tasks.forEach(t=>(by[t.due]=by[t.due]||[]).push(t));
+  let h='';
+  for(let i=0;i<rows*7;i++){const d=addDays(start,i),k=iso(d),ts=(by[k]||[]).sort((a,b)=>a.done-b.done);
+    h+=`<div class="cell${d.getMonth()!==m?' oth':''}${k===iso(TODAY)?' today':''}${k===sel?' sel':''}" data-day="${k}"><b>${d.getDate()}</b>${ts.slice(0,3).map(t=>`<span class="chip ${st(t)}" title="${esc(t.title)}">${esc(t.title)}</span>`).join('')}${ts.length>3?`<small>+${ts.length-3} more</small>`:''}</div>`}
+  $('#days').innerHTML=h;
+
+  const pend=S.tasks.filter(t=>!t.done);
+  $('#stats').innerHTML=`<div class="stat"><b>${pend.length}</b>pending</div><div class="stat"><b>${pend.filter(t=>left(t)>=0&&left(t)<=7).length}</b>due in 7 days</div><div class="stat bad"><b>${pend.filter(t=>left(t)<0).length}</b>overdue</div>`;
+
+  let list=sel?S.tasks.filter(t=>t.due===sel):[...pend];
+  list.sort((a,b)=>a.done-b.done||a.due.localeCompare(b.due));
+  $('#listTitle').textContent=sel?fmt(fromIso(sel),true):'Pending tasks';
+  $('#showAll').hidden=!sel;
+  $('#list').innerHTML=list.length?list.map(t=>{
+    const n=left(t),p=person(t.who),c=st(t);
+    const badge=t.done?'Done':n<0?`${-n}d overdue`:n===0?'Today':n===1?'Tomorrow':n+' days left';
+    return `<div class="task ${st(t)}" data-id="${t.id}">
+      <input type="checkbox" data-act="done" ${t.done?'checked':''} aria-label="Mark done" style="margin-top:4px;padding:0">
+      <div class="tt">${esc(t.title)}</div>
+      <div class="meta"><span>${fmt(fromIso(t.due))}</span><span class="badge ${c}">${badge}</span></div>${t.note?`<div class="meta">${esc(t.note)}</div>`:''}
+      <div class="acts">
+        <select data-act="who" aria-label="Assign to"><option value="">Assign to…</option>${S.people.map(q=>`<option value="${q.id}" ${q.id===t.who?'selected':''}>${esc(q.name)}</option>`).join('')}</select>
+        ${p&&p.phone?`<button class="wa" data-act="wa">💬 Remind ${esc(p.name.split(' ')[0])}</button>`:`<button class="wa" data-act="nowho">💬 Remind</button>`}
+        <button class="ghost sm" data-act="del" aria-label="Delete task">Delete</button>
+      </div></div>`}).join(''):`<div class="empty">${sel?'Nothing on this day. Type a task above and mention the date.':'No pending tasks. Add one above and it will find its own day.'}</div>`;
+
+  $('#people').innerHTML=S.people.length?S.people.map(p=>`<div class="person" data-pid="${p.id}"><i class="av">${esc(p.name.trim().charAt(0).toUpperCase())}</i><div style="flex:1">${esc(p.name)}<br><span>${p.phone?'+'+phone(p.phone):'no number yet, save one above with the same name'} · ${S.tasks.filter(t=>t.who===p.id&&!t.done).length} open</span></div><button class="ghost sm" data-act="delp">Remove</button></div>`).join(''):'<div class="empty">No one saved yet.</div>';
+}
+
+/* ---- events ---- */
+$('#addBtn').onclick=addTask;
+$('#q').addEventListener('keydown',e=>{if(e.key==='Enter')addTask()});
+$('#prev').onclick=()=>{view=new Date(view.getFullYear(),view.getMonth()-1,1);render()};
+$('#next').onclick=()=>{view=new Date(view.getFullYear(),view.getMonth()+1,1);render()};
+$('#todayBtn').onclick=()=>{view=new Date(TODAY.getFullYear(),TODAY.getMonth(),1);sel=iso(TODAY);render()};
+$('#showAll').onclick=()=>{sel=null;render()};
+$('#days').onclick=e=>{const c=e.target.closest('.cell');if(!c)return;sel=sel===c.dataset.day?null:c.dataset.day;render()};
+$('#list').onclick=e=>{
+  const a=e.target.closest('[data-act]');if(!a)return;
+  const row=a.closest('.task'),t=S.tasks.find(x=>x.id===row.dataset.id);
+  if(a.dataset.act==='done'){t.done=a.checked}
+  else if(a.dataset.act==='del'){S.tasks=S.tasks.filter(x=>x!==t)}
+  else if(a.dataset.act==='wa'){openMsg(t,person(t.who));return}
+  else if(a.dataset.act==='nowho'){const q=person(t.who);toast(q?'Add '+q.name+'’s WhatsApp number under People first.':'Pick a person in “Assign to…” first.');return}
+  else return;
+  save();render();
+};
+$('#list').onchange=e=>{if(e.target.dataset.act!=='who')return;const t=S.tasks.find(x=>x.id===e.target.closest('.task').dataset.id);t.who=e.target.value;save();render()};
+$('#pAdd').onclick=()=>{
+  const name=$('#pn').value.trim(),num=$('#pp').value.trim();
+  if(!name||phone(num).length<9){toast('Enter a name and a full WhatsApp number.');return}
+  const ex=findPerson(name);if(ex){ex.phone=num}else S.people.push({id:uid(),name,phone:num});
+  $('#pn').value=$('#pp').value='';save();render();toast(name+' saved.');
+};
+$('#readBtn').onclick=()=>{const t=$('#plan').value.trim();if(!t){toast('Paste your plan first.');return}PLAN=readPlan(t);showPreview()};
+$('#clearPlan').onclick=()=>{$('#plan').value='';PLAN=null;showPreview()};
+$('#preview').onclick=e=>{if(e.target.id==='confirmPlan')confirmPlan()};
+$('#todayChip').textContent=fmt(TODAY,true);
+$('#me').value=S.me||'';$('#me').oninput=e=>{S.me=e.target.value;save()};
+$('#msgTxt').oninput=syncMsg;
+$('#closeOv').onclick=()=>{$('#ov').hidden=true};
+$('#ov').onclick=e=>{if(e.target.id==='ov')$('#ov').hidden=true};
+document.addEventListener('keydown',e=>{if(e.key==='Escape')$('#ov').hidden=true});
+$('#copyMsg').onclick=async()=>{try{await navigator.clipboard.writeText($('#msgTxt').value);toast('Message copied.')}catch(err){toast('Copy failed. Open “Edit message” and copy the text.')}};
+$('#people').onclick=e=>{
+  if(e.target.dataset.act!=='delp')return;
+  const id=e.target.closest('.person').dataset.pid;
+  S.people=S.people.filter(p=>p.id!==id);S.tasks.forEach(t=>{if(t.who===id)t.who=''});save();render();
+};
+render();
+</script>
+</body>
+</html>
