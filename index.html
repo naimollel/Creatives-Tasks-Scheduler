@@ -117,13 +117,19 @@ a.big{flex:1;text-align:center;font-size:15px;padding:12px 16px!important}
 .cell{overflow:visible;min-height:92px}
 .chip{white-space:normal;overflow:visible;text-overflow:clip;overflow-wrap:anywhere;line-height:1.3;padding:3px 6px;font-size:12px}
 @media(max-width:560px){.chip{font-size:10px;padding:2px 4px}}
+.locked .task input,.locked .task select,.locked .task .wa,.locked .task [data-act="del"],.locked .person button,.locked .imp summary{opacity:.5;pointer-events:none}
+input:disabled,textarea:disabled{opacity:.55;cursor:not-allowed}
+.chip small{display:block;color:inherit;opacity:.8;font-weight:400;font-size:10.5px}
+.pj{color:var(--mute);font-weight:400;font-size:13px}
+.top .ghost{white-space:nowrap}
+@media(max-width:560px){#lockBtn{margin-left:auto}}
 #toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;opacity:0;pointer-events:none;transition:opacity .2s;max-width:90vw;z-index:20}
 #toast.on{opacity:1}
 </style>
 </head>
 <body>
 <div class="wrap">
-  <header class="top"><div class="logo" aria-hidden="true">📅</div><div><h1>Creative Scheduler &amp; Reminder</h1></div><div class="today-chip" id="todayChip"></div></header>
+  <header class="top"><div class="logo" aria-hidden="true">📅</div><div><h1>Creative Scheduler &amp; Reminder</h1></div><div class="today-chip" id="todayChip"></div><button class="ghost sm" id="lockBtn"></button><button class="ghost sm" id="chgCode" hidden>Change code</button></header>
   <p class="sub">Type a task in plain words. It lands on the right day, or on the lightest day of the coming month.</p>
   <div class="add">
     <input id="q" autocomplete="off" aria-label="New task" placeholder="e.g. Send invoice to Amina by Friday, or just: Prepare stock report">
@@ -178,6 +184,15 @@ a.big{flex:1;text-align:center;font-size:15px;padding:12px 16px!important}
     <div class="row"><a id="sendWa" class="wa big" target="_blank" rel="noopener" href="#">Send on WhatsApp</a><button class="ghost" id="copyMsg">Copy</button><button class="ghost" id="closeOv">Close</button></div>
   </div>
 </div>
+<div class="ov" id="lockOv" hidden>
+  <div class="dlg" role="dialog" aria-modal="true" aria-label="Owner code">
+    <h3 id="lkTitle"></h3><p class="note" id="lkText"></p>
+    <input id="lk1" type="password" autocomplete="off" placeholder="Code" aria-label="Code" style="width:100%;margin-top:8px">
+    <input id="lk2" type="password" autocomplete="off" placeholder="Repeat code" aria-label="Repeat code" style="width:100%;margin-top:8px" hidden>
+    <p id="lkErr" style="color:var(--bad);min-height:20px;margin:6px 0 0"></p>
+    <div class="row"><button id="lkOk" class="pri"></button><button class="ghost" id="lkCancel">Cancel</button></div>
+  </div>
+</div>
 <div id="toast" role="status"></div>
 
 <script>
@@ -196,7 +211,9 @@ const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'
 let S={tasks:[],people:[]};
 try{const r=JSON.parse(localStorage.getItem('scheduler.v1'));if(r)S=r}catch(e){}
 S.tasks=S.tasks||[];S.people=S.people||[];
-const save=()=>{try{localStorage.setItem('scheduler.v1',JSON.stringify(S))}catch(e){}};
+let DOC=null;
+const save=()=>{try{localStorage.setItem('scheduler.v1',JSON.stringify(S))}catch(e){}
+  if(DOC)DOC.set(JSON.parse(JSON.stringify(S))).catch(()=>toast('Saved on this device only. Only the owner can change the shared calendar.'))};
 let view=new Date(TODAY.getFullYear(),TODAY.getMonth(),1),sel=null;
 
 const left=t=>Math.round((fromIso(t.due)-TODAY)/864e5);
@@ -237,11 +254,11 @@ function allocate(){
   return best;
 }
 function addTask(){
-  const raw=$('#q').value.trim();if(!raw)return;
+  if(!need())return;const raw=$('#q').value.trim();if(!raw)return;
   let {date,title}=parse(raw),auto=false;
   if(!date){date=/\b(urgent|asap)\b/i.test(raw)?addDays(TODAY,1):allocate();auto=true}
   const who=S.people.find(p=>new RegExp('\\b'+p.name.split(' ')[0].replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'\\b','i').test(raw));
-  S.tasks.push({id:Date.now().toString(36)+Math.random().toString(36).slice(2,5),title,due:iso(date),who:who?who.id:'',done:false});
+  S.tasks.push({id:Date.now().toString(36)+Math.random().toString(36).slice(2,5),title:raw,due:iso(date),who:who?who.id:'',done:false});
   save();$('#q').value='';
   view=new Date(date.getFullYear(),date.getMonth(),1);
   $('#hint').textContent=(auto?'No date found, so I scheduled it for the lightest day: ':'Scheduled for ')+fmt(date,true)+(who?' · assigned to '+who.name:'')+'.';
@@ -259,7 +276,7 @@ function readPlan(text){
   for(const raw of text.split(/\r?\n/)){
     const line=clean(raw).trim();if(!line)continue;
     const bullet=/^[-–—•*]\s*/.test(line),body=line.replace(/^[-–—•*]\s*/,'').trim();
-    if(!bullet&&/^\d+[.)]?\s+\S/.test(line)){proj=titleCase(line.replace(/^\d+[.)]?\s*/,'').trim());continue}
+    if(!bullet&&/^\d+[.)]?\s+\S/.test(line)){proj=line.replace(/^\d+[.)]?\s*/,'').trim();continue}
     if(!bullet&&/^[^:]{1,30}:$/.test(line)){out.who=line.slice(0,-1).trim();continue}
     const f=findDate(body);
     if(!f){out.skipped.push((proj?proj+': ':'')+body.replace(/[.\s]+$/,''));continue}
@@ -271,7 +288,7 @@ function readPlan(text){
     if(!step)step='Deadline';
     step=step.charAt(0).toUpperCase()+step.slice(1);
     if(f.range){const mon=m[3].charAt(0).toUpperCase()+m[3].slice(1,3).toLowerCase();note=('Window '+(+m[1])+'–'+(+m[2])+' '+mon+(note?'. '+note:''))}
-    out.tasks.push({title:proj?step+' — '+proj:step,due:iso(f.date),note});
+    out.tasks.push({title:body,proj,due:iso(f.date),note:''});
   }
   return out;
 }
@@ -282,15 +299,15 @@ function showPreview(){
   const q=who&&findPerson(who);
   const sorted=[...tasks].sort((a,b)=>a.due.localeCompare(b.due));
   box.innerHTML=`<p class="pv-h">${who?`Assigned to <b>${esc(who)}</b>${q?(q.phone?'':' (add their number under People)'):' (new person, add their number under People)'}`:'No name found, so tasks will be unassigned'}</p>`
-    +sorted.map(t=>`<div class="pv"><span class="badge">${fmt(fromIso(t.due))}</span><div><b>${esc(t.title)}</b>${t.note?`<div class="note" style="margin:0">${esc(t.note)}</div>`:''}</div></div>`).join('')
+    +sorted.map(t=>`<div class="pv"><span class="badge">${fmt(fromIso(t.due))}</span><div><b>${esc(t.title)}</b>${t.proj?`<div class="note" style="margin:0">${esc(t.proj)}</div>`:''}${t.note?`<div class="note" style="margin:0">${esc(t.note)}</div>`:''}</div></div>`).join('')
     +(skipped.length?`<p class="note">Skipped (no date): ${skipped.map(esc).join('; ')}</p>`:'')
     +`<button id="confirmPlan" class="pri" style="margin-top:10px">Add ${tasks.length} tasks to the calendar</button>`;
 }
-function confirmPlan(){
+function confirmPlan(){if(!need())return;
   let who=null;
   if(PLAN.who){who=findPerson(PLAN.who);if(!who){who={id:uid(),name:titleCase(PLAN.who),phone:''};S.people.push(who)}}
   let n=0;
-  PLAN.tasks.forEach(t=>{if(S.tasks.some(x=>x.title===t.title&&x.due===t.due))return;S.tasks.push({id:uid(),title:t.title,due:t.due,note:t.note,who:who?who.id:'',done:false});n++});
+  PLAN.tasks.forEach(t=>{if(S.tasks.some(x=>x.title===t.title&&x.due===t.due&&(x.proj||'')===(t.proj||'')))return;S.tasks.push({id:uid(),title:t.title,proj:t.proj||'',due:t.due,note:t.note,who:who?who.id:'',done:false});n++});
   save();
   const first=PLAN.tasks.map(t=>t.due).sort()[0];
   if(first){const d=fromIso(first);view=new Date(d.getFullYear(),d.getMonth(),1)}
@@ -313,7 +330,7 @@ function nice(t,p,n){
   const dl=fmt(fromIso(t.due),true),me=(S.me||'').trim();
   const icon=n<0?'🔴':n<=2?'🟠':'🟢';
   const status=n>0?`*${n} day${n===1?'':'s'} left*`:n===0?'*Due today*':`*Overdue by ${-n} day${n===-1?'':'s'}*`;
-  const [step,proj]=t.title.split(' — ');
+  const step=t.title,proj=t.proj||'';
   const ask=n<0?'Please send me an update as soon as you can.':n<=2?'Please prioritise this one so we land it on time.':'Please plan your time so we land it on time.';
   return [`Hello ${p.name} 👋`,'',`${icon} *Task reminder*`,'',`*${step}*`+(proj?`\n_${proj}_`:''),'',`📅 Due: ${dl}`,`⏳ Status: ${status}`,t.note?`📝 Note: ${t.note}`:null,'',ask+' 🙏',me?`\n— ${me}`:null].filter(x=>x!==null).join('\n');
 }
@@ -325,6 +342,38 @@ function syncMsg(){
   $('#sendWa').href='https://wa.me/'+phone(CUR.p.phone)+'?text='+encodeURIComponent(v);
 }
 
+/* ---- owner code ---- */
+let OK=false,lkMode='';try{OK=sessionStorage.getItem('sched.ok')==='1'}catch(e){}
+const PH=$('#q').placeholder;
+const ss=v=>{try{v?sessionStorage.setItem('sched.ok','1'):sessionStorage.removeItem('sched.ok')}catch(e){}};
+async function hashCode(c){
+  const s='sched|'+c;
+  try{const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s));return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('')}
+  catch(e){let h=5381;for(const ch of s)h=((h<<5)+h+ch.charCodeAt(0))|0;return 'x'+h}
+}
+function applyLock(){
+  const locked=!!S.codeHash&&!OK;
+  
+  
+  $('#q').placeholder=locked?'Type a task, then enter your code to add it':PH;
+  $('#lockBtn').textContent=!S.codeHash?'🔓 Set code':OK?'🔒 Lock':'🔑 Unlock';
+  $('#chgCode').hidden=!(S.codeHash&&OK);
+  render();
+}
+function openLock(mode){
+  lkMode=mode;const setm=mode!=='unlock';
+  $('#lkTitle').textContent=mode==='unlock'?'Enter your code':mode==='change'?'Change your code':'Set your private code';
+  $('#lkText').textContent=setm?'Only someone with this code can add, edit or delete tasks. Choose something you will remember.':'Adding and editing tasks is locked.';
+  $('#lk2').hidden=!setm;$('#lk1').value=$('#lk2').value='';$('#lkErr').textContent='';
+  $('#lkOk').textContent=setm?'Save code':'Unlock';
+  $('#lockOv').hidden=false;$('#lk1').focus();
+}
+function need(){
+  if(!S.codeHash){openLock('set');return false}
+  if(!OK){openLock('unlock');return false}
+  return true;
+}
+
 /* ---- render ---- */
 function render(){
   const y=view.getFullYear(),m=view.getMonth();
@@ -334,7 +383,7 @@ function render(){
   S.tasks.forEach(t=>(by[t.due]=by[t.due]||[]).push(t));
   let h='';
   for(let i=0;i<rows*7;i++){const d=addDays(start,i),k=iso(d),ts=(by[k]||[]).sort((a,b)=>a.done-b.done);
-    h+=`<div class="cell${d.getMonth()!==m?' oth':''}${k===iso(TODAY)?' today':''}${k===sel?' sel':''}" data-day="${k}"><b>${d.getDate()}</b>${ts.map(t=>`<span class="chip ${st(t)}" title="${esc(t.title)}">${esc(t.title)}</span>`).join('')}</div>`}
+    h+=`<div class="cell${d.getMonth()!==m?' oth':''}${k===iso(TODAY)?' today':''}${k===sel?' sel':''}" data-day="${k}"><b>${d.getDate()}</b>${ts.map(t=>`<span class="chip ${st(t)}" title="${esc(t.title)}${t.proj?' — '+esc(t.proj):''}">${esc(t.title)}${t.proj?`<small>${esc(t.proj)}</small>`:''}</span>`).join('')}</div>`}
   $('#days').innerHTML=h;
 
   const pend=S.tasks.filter(t=>!t.done);
@@ -349,7 +398,7 @@ function render(){
     const badge=t.done?'Done':n<0?`${-n}d overdue`:n===0?'Today':n===1?'Tomorrow':n+' days left';
     return `<div class="task ${st(t)}" data-id="${t.id}">
       <input type="checkbox" data-act="done" ${t.done?'checked':''} aria-label="Mark done" style="margin-top:4px;padding:0">
-      <div class="tt">${esc(t.title)}</div>
+      <div class="tt">${esc(t.title)}${t.proj?`<div class="pj">${esc(t.proj)}</div>`:''}</div>
       <div class="meta"><span>${fmt(fromIso(t.due))}</span><span class="badge ${c}">${badge}</span></div>${t.note?`<div class="meta">${esc(t.note)}</div>`:''}
       <div class="acts">
         <select data-act="who" aria-label="Assign to"><option value="">Assign to…</option>${S.people.map(q=>`<option value="${q.id}" ${q.id===t.who?'selected':''}>${esc(q.name)}</option>`).join('')}</select>
@@ -371,6 +420,7 @@ $('#days').onclick=e=>{const c=e.target.closest('.cell');if(!c)return;sel=sel===
 $('#list').onclick=e=>{
   const a=e.target.closest('[data-act]');if(!a)return;
   const row=a.closest('.task'),t=S.tasks.find(x=>x.id===row.dataset.id);
+  if(!need()){if(a.dataset.act==='done')a.checked=!a.checked;return}
   if(a.dataset.act==='done'){t.done=a.checked}
   else if(a.dataset.act==='del'){S.tasks=S.tasks.filter(x=>x!==t)}
   else if(a.dataset.act==='wa'){openMsg(t,person(t.who));return}
@@ -378,25 +428,65 @@ $('#list').onclick=e=>{
   else return;
   save();render();
 };
-$('#list').onchange=e=>{if(e.target.dataset.act!=='who')return;const t=S.tasks.find(x=>x.id===e.target.closest('.task').dataset.id);t.who=e.target.value;save();render()};
-$('#pAdd').onclick=()=>{
+$('#list').onchange=e=>{if(e.target.dataset.act!=='who')return;if(!need()){render();return}const t=S.tasks.find(x=>x.id===e.target.closest('.task').dataset.id);t.who=e.target.value;save();render()};
+$('#pAdd').onclick=()=>{if(!need())return;
   const name=$('#pn').value.trim(),num=$('#pp').value.trim();
   if(!name||phone(num).length<9){toast('Enter a name and a full WhatsApp number.');return}
   const ex=findPerson(name);if(ex){ex.phone=num}else S.people.push({id:uid(),name,phone:num});
   $('#pn').value=$('#pp').value='';save();render();toast(name+' saved.');
 };
-$('#readBtn').onclick=()=>{const t=$('#plan').value.trim();if(!t){toast('Paste your plan first.');return}PLAN=readPlan(t);showPreview()};
+$('#readBtn').onclick=()=>{if(!need())return;const t=$('#plan').value.trim();if(!t){toast('Paste your plan first.');return}PLAN=readPlan(t);showPreview()};
 $('#clearPlan').onclick=()=>{$('#plan').value='';PLAN=null;showPreview()};
 $('#preview').onclick=e=>{if(e.target.id==='confirmPlan')confirmPlan()};
 $('#todayChip').textContent=fmt(TODAY,true);
-$('#me').value=S.me||'';$('#me').oninput=e=>{S.me=e.target.value;save()};
+$('#me').value=S.me||'';$('#me').oninput=e=>{if(!need()){e.target.value=S.me||'';return}S.me=e.target.value;save()};
 $('#msgTxt').oninput=syncMsg;
 $('#closeOv').onclick=()=>{$('#ov').hidden=true};
 $('#ov').onclick=e=>{if(e.target.id==='ov')$('#ov').hidden=true};
 document.addEventListener('keydown',e=>{if(e.key==='Escape')$('#ov').hidden=true});
 $('#copyMsg').onclick=async()=>{try{await navigator.clipboard.writeText($('#msgTxt').value);toast('Message copied.')}catch(err){toast('Copy failed. Open “Edit message” and copy the text.')}};
+$('#lockBtn').onclick=()=>{
+  if(!S.codeHash)openLock('set');
+  else if(OK){OK=false;ss(0);applyLock();toast('Locked.')}
+  else openLock('unlock');
+};
+$('#chgCode').onclick=()=>openLock('change');
+$('#lkCancel').onclick=()=>{$('#lockOv').hidden=true};
+$('#lockOv').addEventListener('keydown',e=>{if(e.key==='Enter')$('#lkOk').click();if(e.key==='Escape')$('#lockOv').hidden=true});
+$('#lkOk').onclick=async()=>{
+  const a=$('#lk1').value,b=$('#lk2').value,err=m=>{$('#lkErr').textContent=m};
+  if(lkMode==='unlock'){
+    if(await hashCode(a)===S.codeHash){OK=true;ss(1);$('#lockOv').hidden=true;applyLock();toast('Unlocked.');if($('#q').value.trim())addTask()}
+    else err('That code is not right.');
+    return;
+  }
+  if(a.length<4)return err('Use at least 4 characters.');
+  if(a!==b)return err('The two codes do not match.');
+  S.codeHash=await hashCode(a);OK=true;ss(1);save();$('#lockOv').hidden=true;applyLock();
+  toast('Code saved. Only you can add tasks now.');
+};
+/* shared calendar: everyone can view, only the owner can write */
+(async()=>{
+  try{
+    const db=await claude.use('db');if(!db)return;
+    DOC=db.doc('app/state');
+    const user=await claude.use('user'),owner=user?await user.isOwner():false;
+    DOC.onSnapshot(snap=>{
+      if(snap.metadata&&snap.metadata.hasPendingWrites)return;
+      const d=snap.exists?snap.data():null;
+      if(d){
+        S=Object.assign({tasks:[],people:[]},d);S.tasks=S.tasks||[];S.people=S.people||[];
+        try{localStorage.setItem('scheduler.v1',JSON.stringify(S))}catch(e){}
+        $('#me').value=S.me||'';applyLock();
+      }else if(owner&&(S.tasks.length||S.people.length)){
+        DOC.set(JSON.parse(JSON.stringify(S))).catch(()=>{});
+      }
+    },()=>{});
+  }catch(e){}
+})();
+applyLock();
 $('#people').onclick=e=>{
-  if(e.target.dataset.act!=='delp')return;
+  if(e.target.dataset.act!=='delp')return;if(!need())return;
   const id=e.target.closest('.person').dataset.pid;
   S.people=S.people.filter(p=>p.id!==id);S.tasks.forEach(t=>{if(t.who===id)t.who=''});save();render();
 };

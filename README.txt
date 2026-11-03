@@ -18,5 +18,12 @@ Features
 
 Notes
 - Tasks and people are saved in your browser (localStorage) on the device you use.
+- Owner code: the first time you open the app you set a private code. Without it, nobody can add, edit or delete tasks. Tasks are stored exactly as you typed them.
 - WhatsApp opens with the message ready; you press send yourself.
 - The Google Font needs internet; offline it falls back to your system font.
+
+Viewing vs adding
+- Everyone can see the calendar. The code is only asked for when someone tries to add, edit or delete.
+- This zip version stores tasks only in the browser you open it with. The shared, online version
+  (published on claude.ai) keeps one calendar that everyone you share the link with can see,
+  and only the owner can change.
