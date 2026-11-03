@@ -27,3 +27,6 @@ Viewing vs adding
 - This zip version stores tasks only in the browser you open it with. The shared, online version
   (published on claude.ai) keeps one calendar that everyone you share the link with can see,
   and only the owner can change.
+
+Download as image
+- Press "Image" above the calendar to save the month you are viewing as a PNG (full task text included).

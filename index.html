@@ -123,6 +123,17 @@ input:disabled,textarea:disabled{opacity:.55;cursor:not-allowed}
 .pj{color:var(--mute);font-weight:400;font-size:13px}
 .top .ghost{white-space:nowrap}
 @media(max-width:560px){#lockBtn{margin-left:auto}}
+:root{--bg:#fdeef2;--card:#fff;--ink:#3d0a1f;--mute:#8a5568;--line:#f3cdd8;--acc:#8a1538;--accbg:#fadbe5;--warn:#9a5200;--warnbg:#ffe8c2;--bad:#b3122f;--badbg:#ffd5dd}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#2b0d19;--card:#3b1424;--ink:#ffe9f0;--mute:#d9a5b8;--line:#5c2639;--acc:#ff8fb3;--accbg:#5e1f3a;--warn:#ffc266;--warnbg:#4a3512;--bad:#ff8f9f;--badbg:#5a1c2a}}
+:root[data-theme="dark"]{--bg:#2b0d19;--card:#3b1424;--ink:#ffe9f0;--mute:#d9a5b8;--line:#5c2639;--acc:#ff8fb3;--accbg:#5e1f3a;--warn:#ffc266;--warnbg:#4a3512;--bad:#ff8f9f;--badbg:#5a1c2a}
+button.pri{color:#fff!important}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) button.pri,:root:not([data-theme="light"]) .cell.today b{color:#2b0d19!important}}
+:root[data-theme="dark"] button.pri,:root[data-theme="dark"] .cell.today b{color:#2b0d19!important}
+.chip.late{background:#b3122f;color:#fff}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .chip.late{background:#ff8f9f;color:#2b0d19}}
+:root[data-theme="dark"] .chip.late{background:#ff8f9f;color:#2b0d19}
+.add{box-shadow:0 8px 28px -14px rgba(138,21,56,.5)}
+.top h1{color:var(--acc)}
 #toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;opacity:0;pointer-events:none;transition:opacity .2s;max-width:90vw;z-index:20}
 #toast.on{opacity:1}
 </style>
@@ -151,6 +162,7 @@ input:disabled,textarea:disabled{opacity:.55;cursor:not-allowed}
         <button class="ghost sm" id="prev" aria-label="Previous month">‹</button>
         <h2 id="mTitle"></h2>
         <button class="ghost sm" id="todayBtn">Today</button>
+        <button class="ghost sm" id="imgBtn" title="Download this month as an image">📷 Image</button>
         <button class="ghost sm" id="next" aria-label="Next month">›</button>
       </div>
       <div class="dow"><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span></div>
@@ -374,6 +386,72 @@ function need(){
   return true;
 }
 
+/* ---- download month as image ---- */
+async function monthImage(){
+  try{await document.fonts.ready}catch(e){}
+  const y=view.getFullYear(),mo=view.getMonth(),first=new Date(y,mo,1),off=(first.getDay()+6)%7,dim=new Date(y,mo+1,0).getDate(),rows=Math.ceil((off+dim)/7);
+  const by={};S.tasks.forEach(t=>(by[t.due]=by[t.due]||[]).push(t));
+  const FF='"Bricolage Grotesque",system-ui,-apple-system,"Segoe UI",sans-serif';
+  const W=1800,P=40,G=8,CW=(W-2*P-6*G)/7,HEAD=150,DH=40,fT='600 17px '+FF,fP='400 14px '+FF;
+  const mx=document.createElement('canvas').getContext('2d');
+  const wrap=(ctx,txt,maxW)=>{const out=[];let cur='';for(const w of String(txt).split(/\s+/)){const t=cur?cur+' '+w:w;if(ctx.measureText(t).width>maxW&&cur){out.push(cur);cur=w}else cur=t}if(cur)out.push(cur);return out};
+  const chipLines=(ctx,t)=>{ctx.font=fT;const a=wrap(ctx,t.title,CW-34);let b=[];if(t.proj){ctx.font=fP;b=wrap(ctx,t.proj,CW-34)}return {a,b,h:a.length*21+b.length*17+14}};
+  const days=[],rowH=[];
+  for(let r=0;r<rows;r++){
+    let mh=120;
+    for(let c=0;c<7;c++){
+      const d=addDays(first,r*7+c-off),ts=d.getMonth()===mo?(by[iso(d)]||[]):[];
+      const ch=ts.map(t=>Object.assign({t},chipLines(mx,t)));
+      days.push({d,ch});
+      const h=DH+ch.reduce((s,q)=>s+q.h+6,0)+8;if(h>mh)mh=h;
+    }
+    rowH.push(mh);
+  }
+  const H=HEAD+44+rowH.reduce((s,h)=>s+h+G,0)+70,K=2;
+  const cv=document.createElement('canvas');cv.width=W*K;cv.height=H*K;
+  const x=cv.getContext('2d');x.scale(K,K);
+  const rr=(a,b,w,h,r)=>{x.beginPath();if(x.roundRect)x.roundRect(a,b,w,h,r);else x.rect(a,b,w,h)};
+  x.fillStyle='#fff4f7';x.fillRect(0,0,W,H);
+  x.fillStyle='#7a0f33';x.font='800 56px '+FF;x.fillText(first.toLocaleDateString('en-GB',{month:'long',year:'numeric'}),P,P+62);
+  x.fillStyle='#b4617c';x.font='600 20px '+FF;x.fillText('Creative Scheduler & Reminder',P,P+98);
+  const wy=HEAD-6;
+  ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].forEach((n,i)=>{
+    const X=P+i*(CW+G);x.fillStyle='#7a0f33';rr(X,wy,CW,38,10);x.fill();
+    x.fillStyle='#fff';x.font='700 18px '+FF;x.textAlign='center';x.fillText(n,X+CW/2,wy+25);
+  });
+  x.textAlign='left';
+  let y0=wy+38+G;
+  for(let r=0;r<rows;r++){
+    for(let c=0;c<7;c++){
+      const {d,ch}=days[r*7+c],X=P+c*(CW+G),inM=d.getMonth()===mo,isT=iso(d)===iso(TODAY);
+      x.fillStyle=inM?'#fff':'#fbe7ed';rr(X,y0,CW,rowH[r],12);x.fill();
+      x.strokeStyle=isT?'#7a0f33':'#f0c9d5';x.lineWidth=isT?3:1.5;rr(X,y0,CW,rowH[r],12);x.stroke();
+      x.fillStyle=inM?'#3d0a1f':'#c9a0ae';x.font='800 20px '+FF;x.fillText(String(d.getDate()),X+12,y0+28);
+      let cy=y0+DH;
+      ch.forEach(q=>{
+        const s=st(q.t),bg=s==='late'?'#b3122f':s==='soon'?'#ffe8c2':s==='done'?'#f1e4e8':'#fadbe5',fg=s==='late'?'#ffffff':s==='soon'?'#8a4b00':s==='done'?'#8a7b80':'#7a0f33';
+        x.fillStyle=bg;rr(X+6,cy,CW-12,q.h,8);x.fill();
+        x.fillStyle=fg;x.fillRect(X+6,cy+5,4,q.h-10);
+        let ty=cy+21;x.font=fT;q.a.forEach(l=>{x.fillText(l,X+18,ty);ty+=21});
+        x.font=fP;x.globalAlpha=.85;q.b.forEach(l=>{x.fillText(l,X+18,ty);ty+=17});x.globalAlpha=1;
+        cy+=q.h+6;
+      });
+    }
+    y0+=rowH[r]+G;
+  }
+  let lx=P;const ly=y0+34;x.font='600 16px '+FF;
+  [['#fadbe5','Upcoming'],['#ffe8c2','Due within 2 days'],['#b3122f','Overdue'],['#f1e4e8','Done']].forEach(([c,l])=>{
+    x.fillStyle=c;rr(lx,ly-14,18,18,5);x.fill();x.strokeStyle='#e8b8c7';x.lineWidth=1;x.stroke();
+    x.fillStyle='#7a0f33';x.fillText(l,lx+26,ly);lx+=26+x.measureText(l).width+34;
+  });
+  x.textAlign='right';x.fillStyle='#b4617c';x.fillText('Generated '+fmt(TODAY,true),W-P,ly);x.textAlign='left';
+  const blob=await new Promise(res=>cv.toBlob(res,'image/png'));
+  const name='calendar-'+y+'-'+pad(mo+1)+'.png';
+  let dl=null;try{dl=await claude.use('downloads')}catch(e){}
+  if(dl){try{await dl.save({filename:name,data:blob});toast('Image ready.')}catch(e){if(!e||e.code!=='declined')toast('Could not save the image here.')}return}
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),2000);
+}
+
 /* ---- render ---- */
 function render(){
   const y=view.getFullYear(),m=view.getMonth();
@@ -445,6 +523,7 @@ $('#closeOv').onclick=()=>{$('#ov').hidden=true};
 $('#ov').onclick=e=>{if(e.target.id==='ov')$('#ov').hidden=true};
 document.addEventListener('keydown',e=>{if(e.key==='Escape')$('#ov').hidden=true});
 $('#copyMsg').onclick=async()=>{try{await navigator.clipboard.writeText($('#msgTxt').value);toast('Message copied.')}catch(err){toast('Copy failed. Open “Edit message” and copy the text.')}};
+$('#imgBtn').onclick=()=>{toast('Building the image…');monthImage().catch(()=>toast('Could not build the image.'))};
 $('#lockBtn').onclick=()=>{
   if(!S.codeHash)openLock('set');
   else if(OK){OK=false;ss(0);applyLock();toast('Locked.')}
